@@ -1,0 +1,134 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    # Core correctness & safety
+    - errcheck         # Unchecked errors
+    - govet            # Go vet
+    - staticcheck      # Best practices
+    - ineffassign      # Unused assignments
+    - unused           # Unused vars/funcs/consts
+    - copyloopvar      # Unsafe loop vars in goroutines
+    - nilnil           # Detects return (nil, nil)
+    - asciicheck       # Detects non-ascii character in code
+    - durationcheck
+    - exptostd
+    - forcetypeassert
+
+    # Code style & maintainability
+    - cyclop
+    - depguard
+    - err113
+    - errorlint
+    - errname
+    - exhaustive
+    - funcorder
+    - funlen
+    - gocheckcompilerdirectives
+    - gocognit
+    - gocritic
+    - godot
+    - gosec
+    - intrange
+    - paralleltest
+    - revive
+    - unparam
+    - wrapcheck
+    - prealloc
+
+  settings:
+    copyloopvar:
+      check-alias: true
+    cyclop:
+      max-complexity: 10
+      package-average: 10
+    errcheck:
+      check-type-assertions: true
+    exhaustive:
+      default-signifies-exhaustive: true
+      check:
+        - switch
+        - map
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "math/rand$"
+              desc: use math/rand/v2
+            - pkg: "io/ioutil"
+              desc: use io or os
+    funcorder:
+      alphabetical: false
+      constructor: true
+      struct-method: true
+    funlen:
+      ignore-comments: true
+    gocognit:
+      min-complexity: 30
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+        - opinionated
+        - experimental
+    paralleltest:
+      ignore-missing-subtests: true
+    revive:
+      enable-all-rules: true
+    wrapcheck:
+      ignore-sigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Unwrap(
+
+formatters:
+  enable:
+    - gofumpt
+    - gofmt
+    - gci
+    - golines
+
+  settings:
+    gofumpt:
+      extra-rules: true
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
+    gofmt:
+      simplify: true
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
+    golines:
+      chain-split-dots: true
+      shorten-comments: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  show-stats: false
+  sort-order:
+    - linter
+    - severity
+    - file
+
+run:
+  timeout: 5m
+  relative-path-mode: gomod
+  tests: true
+  modules-download-mode: readonly
+  go: "1.24"
+
+severity:
+  default: info
+  rules:
+    - linters:
+        - dupl
+        - revive
+      severity: info

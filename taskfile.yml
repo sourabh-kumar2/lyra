@@ -1,0 +1,20 @@
+version: '3'
+
+tasks:
+  default:
+    cmd: task -a
+    silent: true
+
+  lint:
+    cmd: golangci-lint run --fix ./...
+    silent: true
+
+  ci-lint:
+    cmd: golangci-lint run ./...
+    silent: true
+
+
+  tidy:
+    cmds:
+      - rm -rf go.sum
+      - go mod tidy
