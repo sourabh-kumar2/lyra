@@ -1,5 +1,11 @@
 package lyra
 
+// Lyra coordinates dependent tasks that can run concurrently when possible,
+// with compile-time type safety for result passing between tasks.
+// It replaces manual sync.WaitGroup and channel
+// coordination with a clean, fluent API.
+type Lyra struct{}
+
 // New creates a new Lyra instance for building and executing DAGs.
 //
 //	l := lyra.New()
@@ -7,9 +13,3 @@ package lyra
 func New() *Lyra {
 	return &Lyra{}
 }
-
-// Lyra coordinates dependent tasks that can run concurrently when possible,
-// with compile-time type safety for result passing between tasks.
-// It replaces manual sync.WaitGroup and channel
-// coordination with a clean, fluent API.
-type Lyra struct{}
