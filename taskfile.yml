@@ -22,7 +22,7 @@ tasks:
     silent: true
 
   bench:
-    cmd: go test -run=^# -bench . -benchmem -count 2 ./...
+    cmd: go test -run=^# -bench . -benchmem -count 5 -cpu=1,2,4 ./...
     desc: run benchmark
     silent: true
 

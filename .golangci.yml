@@ -106,6 +106,7 @@ linters:
         - .Errorf(
         - errors.New(
         - errors.Unwrap(
+        - errors.Wrapf
 
 formatters:
   enable:
