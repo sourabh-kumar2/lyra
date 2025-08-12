@@ -24,9 +24,7 @@ linters:
     - errname
     - exhaustive
     - funcorder
-    - funlen
     - gocheckcompilerdirectives
-    - gocognit
     - gocritic
     - godot
     - gosec
@@ -62,10 +60,6 @@ linters:
       alphabetical: false
       constructor: true
       struct-method: true
-    funlen:
-      ignore-comments: true
-    gocognit:
-      min-complexity: 30
     gocritic:
       enabled-tags:
         - diagnostic
@@ -75,8 +69,38 @@ linters:
         - experimental
     paralleltest:
       ignore-missing-subtests: true
+    govet:
+      enable:
+        - shadow
+      settings:
+        shadow:
+          strict: true
     revive:
       enable-all-rules: true
+      rules:
+        - name: use-any # already taken care by rewrite rule
+          disabled: true
+        - name: comment-spacings # already taken care by other rules
+          disabled: true
+        - name: unused-parameter
+          exclude:
+            - TEST
+        - name: cognitive-complexity
+          arguments:
+            - 10
+        - name: line-length-limit
+          arguments:
+            - 120
+        - name: add-constant
+          arguments:
+            - allowInts: "0,1"
+              allowStrs: '""'
+          exclude:
+            - TEST
+        - name: function-length
+          exclude:
+            - TEST
+
     wrapcheck:
       ignore-sigs:
         - .Errorf(

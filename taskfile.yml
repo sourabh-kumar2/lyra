@@ -6,6 +6,7 @@ tasks:
     silent: true
 
   lint:
+    desc: Performs lint and fix issues if fixable.
     cmd: golangci-lint run --fix ./...
     silent: true
 
@@ -13,6 +14,17 @@ tasks:
     cmd: golangci-lint run ./...
     silent: true
 
+  test:
+    deps:
+      - lint
+    desc: Runs test with coverage
+    cmd: go test -v -race -cover -coverprofile=coverage.txt -covermode=atomic ./...
+    silent: true
+
+  bench:
+    cmd: go test -run=^# -bench . -benchmem -count 2 ./...
+    desc: run benchmark
+    silent: true
 
   tidy:
     cmds:
