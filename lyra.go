@@ -1,6 +1,10 @@
 package lyra
 
-import "context"
+import (
+	"context"
+
+	"github.com/sourabh-kumar2/lyra/internal"
+)
 
 // Lyra coordinates dependent tasks that can run concurrently when possible,
 // with compile-time type safety for result passing between tasks.
@@ -17,7 +21,7 @@ func New() *Lyra {
 }
 
 // Do adds a task to the DAG and returns a TaskBuilder for chaining.
-func (l *Lyra) Do(taskID string, fn any, inputs ...InputSpec) *Lyra {
+func (l *Lyra) Do(taskID string, fn any, inputs ...internal.InputSpec) *Lyra {
 	_ = taskID
 	_ = fn
 	_ = inputs

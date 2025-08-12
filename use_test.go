@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/sourabh-kumar2/lyra/internal"
 )
 
 func TestUse(t *testing.T) {
@@ -13,13 +15,13 @@ func TestUse(t *testing.T) {
 		name      string
 		source    string
 		fieldPath []string
-		expected  InputSpec
+		expected  internal.InputSpec
 	}{
 		{
 			name:   "simple task result",
 			source: "fetchUser",
-			expected: InputSpec{
-				Type:   taskResultInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
 				Field:  "",
 			},
@@ -28,8 +30,8 @@ func TestUse(t *testing.T) {
 			name:      "task result with field",
 			source:    "fetchUser",
 			fieldPath: []string{"ID"},
-			expected: InputSpec{
-				Type:   taskResultInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
 				Field:  "ID",
 			},
@@ -38,8 +40,8 @@ func TestUse(t *testing.T) {
 			name:      "nested field path",
 			source:    "fetchUser",
 			fieldPath: []string{"Address", "Street"},
-			expected: InputSpec{
-				Type:   taskResultInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
 				Field:  "Address.Street",
 			},
@@ -48,8 +50,8 @@ func TestUse(t *testing.T) {
 			name:      "deep nested field path",
 			source:    "fetchUser",
 			fieldPath: []string{"Profile", "Settings", "Theme", "Color"},
-			expected: InputSpec{
-				Type:   taskResultInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
 				Field:  "Profile.Settings.Theme.Color",
 			},
@@ -57,8 +59,8 @@ func TestUse(t *testing.T) {
 		{
 			name:   "empty source",
 			source: "",
-			expected: InputSpec{
-				Type:   taskResultInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.TaskResultInputSpec,
 				Source: "",
 				Field:  "",
 			},
@@ -67,8 +69,8 @@ func TestUse(t *testing.T) {
 			name:      "empty field path elements",
 			source:    "fetchUser",
 			fieldPath: []string{"", "ID", ""},
-			expected: InputSpec{
-				Type:   taskResultInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
 				Field:  "ID",
 			},
@@ -89,13 +91,13 @@ func TestUseRun(t *testing.T) {
 		name      string
 		source    string
 		fieldPath []string
-		expected  InputSpec
+		expected  internal.InputSpec
 	}{
 		{
 			name:   "simple literal",
 			source: "user_id",
-			expected: InputSpec{
-				Type:   runtimeInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.RuntimeInputSpec,
 				Source: "user_id",
 				Field:  "",
 			},
@@ -104,8 +106,8 @@ func TestUseRun(t *testing.T) {
 			name:      "struct with field",
 			source:    "user",
 			fieldPath: []string{"ID"},
-			expected: InputSpec{
-				Type:   runtimeInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.RuntimeInputSpec,
 				Source: "user",
 				Field:  "ID",
 			},
@@ -114,8 +116,8 @@ func TestUseRun(t *testing.T) {
 			name:      "nested field path",
 			source:    "user",
 			fieldPath: []string{"Address", "Street"},
-			expected: InputSpec{
-				Type:   runtimeInputSpec,
+			expected: internal.InputSpec{
+				Type:   internal.RuntimeInputSpec,
 				Source: "user",
 				Field:  "Address.Street",
 			},
