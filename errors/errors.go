@@ -44,6 +44,9 @@ var ErrMissingDependency = errors.New("dependency not found")
 // ErrInvalidInput is returned when task has invalid input spec.
 var ErrInvalidInput = errors.New("invalid input")
 
+// ErrTaskNotFound is returned when task is not found.
+var ErrTaskNotFound = errors.New("task not found")
+
 // Wrapf returns the wrapped error.
 // nolint:err113 // we are wrapping here so needed.
 func Wrapf(err error, format string, args ...any) error {
