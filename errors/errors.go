@@ -1,6 +1,9 @@
-package lyra
+package errors
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // ErrMustBeFunction is returned when the provided value is not a function.
 var ErrMustBeFunction = errors.New("must be a function")
@@ -40,3 +43,12 @@ var ErrMissingDependency = errors.New("dependency not found")
 
 // ErrInvalidInput is returned when task has invalid input spec.
 var ErrInvalidInput = errors.New("invalid input")
+
+// Wrapf returns the wrapped error.
+// nolint:err113 // we are wrapping here so needed.
+func Wrapf(err error, format string, args ...any) error {
+	if err == nil {
+		return fmt.Errorf(format, args...)
+	}
+	return fmt.Errorf(format+": %w", append(args, err)...)
+}
