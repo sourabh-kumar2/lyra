@@ -1,17 +1,33 @@
 package internal
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/sourabh-kumar2/lyra/errors"
+)
+
 // Task represents a single task in a DAG.
 type Task struct {
 	id         string
 	fn         any
+	fnInfo     *functionInfo
 	inputSpecs []InputSpec
 }
 
 // NewTask creates a task node.
 func NewTask(id string, fn any, inputSpecs []InputSpec) (*Task, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, errors.ErrTaskIDCannotBeEmpty
+	}
+	fnInfo, err := analyzeFunctionSignature(fn)
+	if err != nil {
+		return nil, fmt.Errorf("invalid function for task %q: %w", id, err)
+	}
 	return &Task{
 		id:         id,
 		fn:         fn,
 		inputSpecs: inputSpecs,
+		fnInfo:     fnInfo,
 	}, nil
 }
