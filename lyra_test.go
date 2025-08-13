@@ -2,6 +2,7 @@ package lyra
 
 import (
 	"context"
+	stderr "errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -745,6 +746,153 @@ func TestRunLargeDAGPerformance(t *testing.T) {
 	require.Less(t, duration, 5*time.Second, "DAG execution took too long: %v", duration)
 
 	t.Logf("Large DAG (100 tasks) executed in %v", duration)
+}
+
+func TestConcurrentStageExecution(t *testing.T) {
+	t.Parallel()
+
+	// Track execution order to verify concurrency
+	var mu sync.Mutex
+	var executionOrder []string
+	var executionTimes []time.Time
+
+	recordExecution := func(taskID string) {
+		mu.Lock()
+		defer mu.Unlock()
+		executionOrder = append(executionOrder, taskID)
+		executionTimes = append(executionTimes, time.Now())
+	}
+
+	l := New().
+		Do("source", func(ctx context.Context) (int, error) {
+			recordExecution("source")
+			return 10, nil
+		}).
+		// These should execute concurrently (same stage)
+		Do("parallel1", func(ctx context.Context, val int) (int, error) {
+			recordExecution("parallel1")
+			time.Sleep(50 * time.Millisecond) // Simulate work
+			return val * 2, nil
+		}, Use("source")).
+		Do("parallel2", func(ctx context.Context, val int) (int, error) {
+			recordExecution("parallel2")
+			time.Sleep(50 * time.Millisecond) // Simulate work
+			return val * 3, nil
+		}, Use("source")).
+		Do("parallel3", func(ctx context.Context, val int) (int, error) {
+			recordExecution("parallel3")
+			time.Sleep(50 * time.Millisecond) // Simulate work
+			return val * 4, nil
+		}, Use("source"))
+
+	start := time.Now()
+	result, err := l.Run(context.Background(), nil)
+	totalDuration := time.Since(start)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Verify results
+	p1, err := result.Get("parallel1")
+	require.NoError(t, err)
+	require.Equal(t, 20, p1)
+
+	p2, err := result.Get("parallel2")
+	require.NoError(t, err)
+	require.Equal(t, 30, p2)
+
+	p3, err := result.Get("parallel3")
+	require.NoError(t, err)
+	require.Equal(t, 40, p3)
+
+	// Verify concurrency: should complete in ~50ms, not 150ms
+	require.Less(t, totalDuration, 120*time.Millisecond,
+		"Tasks should execute concurrently, took %v", totalDuration)
+
+	// Verify execution order: source should be first
+	require.Equal(t, "source", executionOrder[0])
+
+	// The parallel tasks should start within a short time window
+	parallelStartTimes := executionTimes[1:] // Skip source
+	maxTimeDiff := time.Duration(0)
+	for i := 1; i < len(parallelStartTimes); i++ {
+		diff := parallelStartTimes[i].Sub(parallelStartTimes[0])
+		if diff > maxTimeDiff {
+			maxTimeDiff = diff
+		}
+	}
+
+	// Parallel tasks should start within 10ms of each other
+	require.Less(t, maxTimeDiff, 10*time.Millisecond,
+		"Parallel tasks should start nearly simultaneously")
+
+	t.Logf("Concurrent execution completed in %v", totalDuration)
+	t.Logf("Execution order: %v", executionOrder)
+}
+
+// Test error handling in concurrent execution.
+func TestConcurrentStageWithError(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("source", func(ctx context.Context) (int, error) {
+			return 10, nil
+		}).
+		Do("success", func(ctx context.Context, val int) (int, error) {
+			time.Sleep(100 * time.Millisecond) // Longer than failure
+			return val * 2, nil
+		}, Use("source")).
+		Do("failure", func(ctx context.Context, val int) (int, error) {
+			time.Sleep(20 * time.Millisecond)
+			//nolint:err113 // it's a test error
+			return 0, stderr.New("task failed")
+		}, Use("source"))
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "task failed")
+}
+
+// Test context cancellation in concurrent execution.
+func TestConcurrentStageContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	l := New().
+		Do("source", func(ctx context.Context) (int, error) {
+			return 10, nil
+		}).
+		Do("long1", func(ctx context.Context, val int) (int, error) {
+			select {
+			case <-time.After(200 * time.Millisecond):
+				return val, nil
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			}
+		}, Use("source")).
+		Do("long2", func(ctx context.Context, val int) (int, error) {
+			select {
+			case <-time.After(200 * time.Millisecond):
+				return val, nil
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			}
+		}, Use("source"))
+
+	// Cancel context after 50ms
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	result, err := l.Run(ctx, nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "context")
 }
 
 type User struct {

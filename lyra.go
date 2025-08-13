@@ -2,6 +2,7 @@ package lyra
 
 import (
 	"context"
+	stderr "errors"
 	"reflect"
 	"sync"
 
@@ -103,27 +104,64 @@ func (l *Lyra) process(ctx context.Context, stages [][]string, result *Result) e
 }
 
 func (l *Lyra) executeStage(ctx context.Context, stage []string, result *Result) error {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	if len(stage) == 1 {
+		return l.executeTask(ctx, stage[0], result) // Single task - no need for goroutines
+	}
+	// Multiple tasks - execute concurrently
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(stage))
+
 	for _, taskID := range stage {
-		task := l.tasks[taskID]
-		args, err := resolveInputs(ctx, task, result)
-		if err != nil {
-			return errors.Wrapf(err, "failed to resolve task %q", taskID)
-		}
-		values := reflect.ValueOf(task.GetFunction()).Call(args)
-		if len(values) == 2 {
-			if !values[1].IsNil() {
-				// revive:disable-next-line:unchecked-type-assertion // It's always error
-				err, _ = values[1].Interface().(error)
-				return err
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			if err := l.executeTask(ctx, id, result); err != nil {
+				errChan <- errors.Wrapf(err, "task %q failed", id)
 			}
-			result.set(taskID, values[0].Interface())
-		} else if !values[0].IsNil() { // just (error)
+		}(taskID)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	//nolint:prealloc // pre-allocating is not required.
+	var errs []error
+	for err := range errChan {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		//nolint:wrapcheck // stderr points to standard errors.
+		return stderr.Join(errs...)
+	}
+
+	return nil
+}
+
+func (l *Lyra) executeTask(ctx context.Context, taskID string, result *Result) error {
+	l.mu.RLock()
+	task := l.tasks[taskID]
+	l.mu.RUnlock()
+
+	args, err := resolveInputs(ctx, task, result)
+	if err != nil {
+		return errors.Wrapf(err, "input resolution failed")
+	}
+
+	values := reflect.ValueOf(task.GetFunction()).Call(args)
+
+	if len(values) == 2 { // (result, error)
+		if !values[1].IsNil() {
 			// revive:disable-next-line:unchecked-type-assertion // It's always error
-			err, _ = values[0].Interface().(error)
+			err, _ = values[1].Interface().(error)
 			return err
 		}
+		result.set(taskID, values[0].Interface())
+	} else if !values[0].IsNil() { // just (error)
+		// revive:disable-next-line:unchecked-type-assertion // It's always error
+		err, _ = values[0].Interface().(error)
+		return err
 	}
+
 	return nil
 }
