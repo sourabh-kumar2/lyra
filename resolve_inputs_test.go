@@ -71,3 +71,31 @@ func TestLyraResolveInputsTaskResultInput(t *testing.T) {
 	require.Len(t, args, 2)
 	require.Equal(t, "user_data", args[1].Interface())
 }
+
+func TestLyraResolveInputsMultipleInputs(t *testing.T) {
+	t.Parallel()
+
+	task, err := internal.NewTask("multiTask",
+		func(ctx context.Context, userID int, userData string, isActive bool) (string, error) {
+			return "result", nil
+		},
+		[]internal.InputSpec{
+			UseRun("userID"),
+			Use("fetchUser"),
+			UseRun("active"),
+		})
+	require.NoError(t, err)
+
+	results := NewResult()
+	results.set("userID", 456)
+	results.set("fetchUser", "john_doe")
+	results.set("active", true)
+
+	args, err := resolveInputs(context.Background(), task, results)
+
+	require.NoError(t, err)
+	require.Len(t, args, 4) // context + 3 params
+	require.Equal(t, 456, args[1].Interface())
+	require.Equal(t, "john_doe", args[2].Interface())
+	require.Equal(t, true, args[3].Interface())
+}
