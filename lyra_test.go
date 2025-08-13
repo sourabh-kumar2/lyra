@@ -239,6 +239,32 @@ func TestDoConcurrency(t *testing.T) {
 	require.Len(t, l.tasks, 10)
 }
 
+func TestRunEmptyDAG(t *testing.T) {
+	t.Parallel()
+
+	l := New()
+	result, err := l.Run(context.Background(), nil)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestRunEmptyDAGWithRunInputs(t *testing.T) {
+	t.Parallel()
+
+	runInputs := map[string]any{
+		"userID":  123,
+		"orderID": 456,
+	}
+
+	l := New()
+	result, err := l.Run(context.Background(), runInputs)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, result.data, runInputs)
+}
+
 type user struct {
 	ID string
 }
