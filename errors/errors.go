@@ -41,8 +41,9 @@ var ErrCyclicDependency = errors.New("cyclic dependency detected")
 // ErrMissingDependency is returned when referenced dependency doesn't exist.
 var ErrMissingDependency = errors.New("dependency not found")
 
-// ErrInvalidInput is returned when task has invalid input spec.
-var ErrInvalidInput = errors.New("invalid input")
+// ErrInvalidParamType is returned when the task expects input in different format then the
+// provided.
+var ErrInvalidParamType = errors.New("invalid parameter type received")
 
 // ErrDuplicateTask is returned when another task with same id is registered again.
 var ErrDuplicateTask = errors.New("duplicate task")

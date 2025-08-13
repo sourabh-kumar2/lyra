@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/sourabh-kumar2/lyra/errors"
 	"github.com/sourabh-kumar2/lyra/internal"
 )
 
@@ -98,4 +99,21 @@ func TestLyraResolveInputsMultipleInputs(t *testing.T) {
 	require.Equal(t, 456, args[1].Interface())
 	require.Equal(t, "john_doe", args[2].Interface())
 	require.Equal(t, true, args[3].Interface())
+}
+
+func TestLyraResolveInputsTypeMismatch(t *testing.T) {
+	t.Parallel()
+
+	task, err := internal.NewTask("typeMismatch",
+		func(ctx context.Context, userID int) (string, error) { return "test", nil },
+		[]internal.InputSpec{UseRun("userID")})
+	require.NoError(t, err)
+
+	results := NewResult()
+	results.set("userID", "string_instead_of_int") // Wrong type
+
+	args, err := resolveInputs(context.Background(), task, results)
+
+	require.ErrorIs(t, err, errors.ErrInvalidParamType)
+	require.Nil(t, args)
 }

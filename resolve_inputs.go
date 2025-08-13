@@ -26,7 +26,16 @@ func resolveInputs(
 				task.GetID(),
 			)
 		}
-		_ = i
+
+		if reflect.TypeOf(value) != types[i+1] { // first is context.Context
+			return nil, errors.Wrapf(
+				errors.ErrInvalidParamType,
+				"parameter %d -> exptected type %s, got %s",
+				i+2, // array offset (1) + first param is context (1) = 2
+				types[i+1],
+				reflect.TypeOf(value),
+			)
+		}
 		params = append(params, reflect.ValueOf(value))
 	}
 	_ = types
