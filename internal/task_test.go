@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -196,4 +197,27 @@ func TestGetDependencies(t *testing.T) {
 			require.Equal(t, tc.expected, deps)
 		})
 	}
+}
+
+func TestGetInputParams(t *testing.T) {
+	t.Parallel()
+	inputSpecs := []InputSpec{
+		{
+			Type:   RuntimeInputSpec,
+			Source: "userID",
+		},
+	}
+	task, err := NewTask(
+		"id",
+		func(ctx context.Context, userID string) error { return nil },
+		inputSpecs,
+	)
+
+	require.NoError(t, err)
+	specs, types := task.GetInputParams()
+	require.Equal(t, inputSpecs, specs)
+	require.Equal(t, []reflect.Type{
+		contextInterface,
+		reflect.TypeOf(""),
+	}, types)
 }

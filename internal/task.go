@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/sourabh-kumar2/lyra/errors"
@@ -50,4 +51,9 @@ func (t *Task) GetDependencies() []string {
 		}
 	}
 	return deps
+}
+
+// GetInputParams returns input params for the calling function.
+func (t *Task) GetInputParams() (specs []InputSpec, types []reflect.Type) {
+	return t.inputSpecs, t.fnInfo.inputTypes
 }
