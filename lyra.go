@@ -60,7 +60,10 @@ func (l *Lyra) Run(ctx context.Context, runInputs map[string]any) (*Result, erro
 		return nil, errors.Wrapf(err, "failed to get stages")
 	}
 
-	l.process(ctx, stages, result)
+	err = l.process(ctx, stages, result)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to process stages")
+	}
 
 	return result, nil
 }
@@ -89,10 +92,14 @@ func (l *Lyra) getStages() ([][]string, error) {
 	return stages, nil
 }
 
-func (l *Lyra) process(ctx context.Context, stages [][]string, result *Result) {
+func (l *Lyra) process(ctx context.Context, stages [][]string, result *Result) error {
 	for _, stage := range stages {
-		_ = l.executeStage(ctx, stage, result)
+		err := l.executeStage(ctx, stage, result)
+		if err != nil {
+			return errors.Wrapf(err, "execute stage")
+		}
 	}
+	return nil
 }
 
 func (l *Lyra) executeStage(ctx context.Context, stage []string, result *Result) error {

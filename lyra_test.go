@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/sourabh-kumar2/lyra/errors"
 	"github.com/sourabh-kumar2/lyra/internal"
 )
+
+//revive:disable:use-errors-new,unnecessary-format
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -292,12 +295,484 @@ func TestRunSingleTaskNoInputs(t *testing.T) {
 	require.Equal(t, "world", helloResult)
 }
 
-type user struct {
-	ID string
+func TestRunSingleTaskWithRuntimeInput(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("greet", func(ctx context.Context, name string) (string, error) {
+			return fmt.Sprintf("Hello %s", name), nil
+		}, UseRun("name"))
+
+	result, err := l.Run(context.Background(), map[string]any{"name": "Alice"})
+
+	require.NoError(t, err)
+	greeting, err := result.Get("greet")
+	require.NoError(t, err)
+	require.Equal(t, "Hello Alice", greeting)
 }
 
-func validTask(ctx context.Context, userID string) (user, error) {
-	return user{}, nil
+func TestRunLinearDependency(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("task1", func(ctx context.Context, userID int) (string, error) {
+			return fmt.Sprintf("user_%d", userID), nil
+		}, UseRun("userID")).
+		Do("task2", func(ctx context.Context, user string) (string, error) {
+			return user + "_processed", nil
+		}, Use("task1"))
+
+	result, err := l.Run(context.Background(), map[string]any{"userID": 123})
+
+	require.NoError(t, err)
+
+	task1Result, err := result.Get("task1")
+	require.NoError(t, err)
+	require.Equal(t, "user_123", task1Result)
+
+	task2Result, err := result.Get("task2")
+	require.NoError(t, err)
+	require.Equal(t, "user_123_processed", task2Result)
+}
+
+func TestRunDeepLinearChain(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("step1", func(ctx context.Context, input int) (int, error) {
+			return input * 2, nil
+		}, UseRun("input")).
+		Do("step2", func(ctx context.Context, val int) (int, error) {
+			return val + 10, nil
+		}, Use("step1")).
+		Do("step3", func(ctx context.Context, val int) (int, error) {
+			return val * 3, nil
+		}, Use("step2")).
+		Do("step4", func(ctx context.Context, val int) (string, error) {
+			return fmt.Sprintf("result_%d", val), nil
+		}, Use("step3"))
+
+	result, err := l.Run(context.Background(), map[string]any{"input": 5})
+
+	require.NoError(t, err)
+
+	finalResult, err := result.Get("step4")
+	require.NoError(t, err)
+	// 5 * 2 = 10, 10 + 10 = 20, 20 * 3 = 60
+	require.Equal(t, "result_60", finalResult)
+}
+
+//nolint:err113 // test case.
+func TestRunDiamondDependency(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("fetchUser", func(ctx context.Context, userID int) (User, error) {
+			return User{ID: userID, Name: "Alice", Email: "alice@example.com"}, nil
+		}, UseRun("userID")).
+		Do("validateEmail", func(ctx context.Context, user User) (bool, error) {
+			return (user.Email) != "", nil
+		}, Use("fetchUser")).
+		Do("formatName", func(ctx context.Context, user User) (string, error) {
+			return fmt.Sprintf("Mr/Ms %s", user.Name), nil
+		}, Use("fetchUser")).
+		Do("createProfile", func(ctx context.Context, user User, isValid bool, formatted string) (string, error) {
+			if !isValid {
+				return "", fmt.Errorf("invalid email")
+			}
+			return fmt.Sprintf("Profile: %s (%s)", formatted, user.Email), nil
+		}, Use("fetchUser"), Use("validateEmail"), Use("formatName"))
+
+	result, err := l.Run(context.Background(), map[string]any{"userID": 123})
+
+	require.NoError(t, err)
+
+	profile, err := result.Get("createProfile")
+	require.NoError(t, err)
+	require.Equal(t, "Profile: Mr/Ms Alice (alice@example.com)", profile)
+}
+
+func TestRunComplexWorkflow(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("fetchUser", func(ctx context.Context, userID int) (User, error) {
+			return User{
+				ID:      userID,
+				Name:    "Bob",
+				Address: Address{Street: "123 Main St", City: "Boston"},
+			}, nil
+		}, UseRun("userID")).
+		Do("fetchOrders", func(ctx context.Context, userID int) ([]Order, error) {
+			return []Order{
+				{ID: 1, UserID: userID, Amount: 100.0},
+				{ID: 2, UserID: userID, Amount: 250.0},
+			}, nil
+		}, UseRun("userID")).
+		Do("calculateTotal", func(ctx context.Context, orders []Order) (float64, error) {
+			total := 0.0
+			for _, order := range orders {
+				total += order.Amount
+			}
+			return total, nil
+		}, Use("fetchOrders")).
+		Do("generateReport", func(ctx context.Context, user User, orders []Order, total float64) (Report, error) {
+			return Report{
+				UserName:   user.Name,
+				OrderCount: len(orders),
+				TotalSpent: total,
+			}, nil
+		}, Use("fetchUser"), Use("fetchOrders"), Use("calculateTotal"))
+
+	result, err := l.Run(context.Background(), map[string]any{"userID": 456})
+
+	require.NoError(t, err)
+
+	report, err := result.Get("generateReport")
+	require.NoError(t, err)
+
+	expectedReport := Report{
+		UserName:   "Bob",
+		OrderCount: 2,
+		TotalSpent: 350.0,
+	}
+	require.Equal(t, expectedReport, report)
+}
+
+func TestRunLargeFanInFanOut(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("source", func(ctx context.Context, input int) (int, error) {
+			return input, nil
+		}, UseRun("input"))
+
+	// Fan out: create 5 parallel tasks
+	for i := 1; i <= 5; i++ {
+		taskID := fmt.Sprintf("process_%d", i)
+		l.Do(taskID, func(ctx context.Context, val int) (int, error) {
+			return val * i, nil
+		}, Use("source"))
+	}
+
+	// Fan in: aggregate all results
+	l.Do("aggregate", func(ctx context.Context, r1, r2, r3, r4, r5 int) (int, error) {
+		return r1 + r2 + r3 + r4 + r5, nil
+	}, Use("process_1"), Use("process_2"), Use("process_3"),
+		Use("process_4"), Use("process_5"))
+
+	result, err := l.Run(context.Background(), map[string]any{"input": 10})
+
+	require.NoError(t, err)
+
+	aggregate, err := result.Get("aggregate")
+	require.NoError(t, err)
+	// 10*1 + 10*2 + 10*3 + 10*4 + 10*5 = 10 + 20 + 30 + 40 + 50 = 150
+	require.Equal(t, 150, aggregate)
+}
+
+func TestRunNestedFieldAccess(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("getUser", func(ctx context.Context) (User, error) {
+			return User{
+				Name: "Charlie",
+				Address: Address{
+					Street: "456 Oak Ave",
+					City:   "Chicago",
+				},
+			}, nil
+		}).
+		Do("processCity", func(ctx context.Context, city string) (string, error) {
+			return fmt.Sprintf("Processing in %s", city), nil
+		}, Use("getUser", "Address", "City"))
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.NoError(t, err)
+
+	processed, err := result.Get("processCity")
+	require.NoError(t, err)
+	require.Equal(t, "Processing in Chicago", processed)
+}
+
+//nolint:err113 // test case.
+func TestRunTaskExecutionError(t *testing.T) {
+	t.Parallel()
+	l := New().
+		Do("failingTask", func(ctx context.Context) (string, error) {
+			return "", fmt.Errorf("something went wrong")
+		}).
+		Do("dependentTask", func(ctx context.Context, input string) (string, error) {
+			return "processed_" + input, nil
+		}, Use("failingTask"))
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "something went wrong")
+}
+
+//nolint:err113 // test case.
+func TestRunTaskExecutionErrorOnlyErrorOutput(t *testing.T) {
+	t.Parallel()
+	l := New().
+		Do("failingTask", func(ctx context.Context) error {
+			return fmt.Errorf("something went wrong")
+		}).
+		Do("dependentTask", func(ctx context.Context, input string) (string, error) {
+			return "processed_" + input, nil
+		}, Use("failingTask"))
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "something went wrong")
+}
+
+func TestRunMissingRuntimeInput(t *testing.T) {
+	t.Parallel()
+	l := New().
+		Do("needsInput", func(ctx context.Context, name string) (string, error) {
+			return "Hello " + name, nil
+		}, UseRun("name"))
+
+	result, err := l.Run(context.Background(), map[string]any{"wrongKey": "value"})
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "name")
+}
+
+func TestRunTypeMismatch(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("producer", func(ctx context.Context) (string, error) {
+			return "text_result", nil
+		}).
+		Do("consumer", func(ctx context.Context, num int) (string, error) {
+			return fmt.Sprintf("number_%d", num), nil
+		}, Use("producer")) // string -> int mismatch
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "type")
+}
+
+func TestRunCyclicDependency(t *testing.T) {
+	t.Parallel()
+	l := New().
+		Do("taskA", func(ctx context.Context, input string) (string, error) {
+			return "A_" + input, nil
+		}, Use("taskB")).
+		Do("taskB", func(ctx context.Context, input string) (string, error) {
+			return "B_" + input, nil
+		}, Use("taskA"))
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "cyclic")
+}
+
+func TestRunMissingDependency(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("task", func(ctx context.Context, input string) (string, error) {
+			return "processed_" + input, nil
+		}, Use("nonExistentTask"))
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "nonExistentTask")
+}
+
+func TestRunNilTaskResult(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("nilTask", func(ctx context.Context) (*string, error) {
+			//nolint:nilnil // testing specific scenario
+			return nil, nil
+		}).
+		Do("consumer", func(ctx context.Context, input *string) (string, error) {
+			if input == nil {
+				return "got_nil", nil
+			}
+			return *input, nil
+		}, Use("nilTask"))
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.NoError(t, err)
+
+	consumerResult, err := result.Get("consumer")
+	require.NoError(t, err)
+	require.Equal(t, "got_nil", consumerResult)
+}
+
+func TestRunContextTimeout(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	l := New().
+		Do("slowTask", func(ctx context.Context) (string, error) {
+			select {
+			case <-time.After(200 * time.Millisecond):
+				return "completed", nil
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+		})
+
+	result, err := l.Run(ctx, nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "context")
+}
+
+func TestRunContextPropagation(t *testing.T) {
+	t.Parallel()
+
+	type contextKey string
+	const testKey contextKey = "testValue"
+
+	ctx := context.WithValue(context.Background(), testKey, "propagated")
+
+	l := New().
+		Do("checkContext", func(ctx context.Context) (string, error) {
+			if val := ctx.Value(testKey); val != nil {
+				s, ok := val.(string)
+				if !ok {
+					return "", nil
+				}
+				return s, nil
+			}
+			return "not_found", nil
+		})
+
+	result, err := l.Run(ctx, nil)
+
+	require.NoError(t, err)
+
+	ctxResult, err := result.Get("checkContext")
+	require.NoError(t, err)
+	require.Equal(t, "propagated", ctxResult)
+}
+
+func TestDoDuplicateTaskID(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("task", func(ctx context.Context) (string, error) {
+			return "first", nil
+		}).
+		Do("task", func(ctx context.Context) (string, error) {
+			return "second", nil
+		})
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Contains(t, err.Error(), "duplicate")
+}
+
+func TestDoInvalidFunctionSignature(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("invalidTask", func() string { // Missing context, missing error return
+			return "invalid"
+		})
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+}
+
+func TestRunLargeDAGPerformance(t *testing.T) {
+	t.Parallel()
+
+	if testing.Short() {
+		t.Skip("Skipping performance test in short mode")
+	}
+
+	l := New()
+
+	// Create a large DAG: 100 tasks with complex dependencies
+	l.Do("root", func(ctx context.Context) (int, error) {
+		return 1, nil
+	})
+
+	// Create 10 levels with 10 tasks each
+	for level := 1; level <= 10; level++ {
+		for task := 1; task <= 10; task++ {
+			taskID := fmt.Sprintf("L%d_T%d", level, task)
+			prevTaskID := "root"
+			if level > 1 {
+				prevTaskID = fmt.Sprintf("L%d_T%d", level-1, task)
+			}
+
+			l.Do(taskID, func(ctx context.Context, input int) (int, error) {
+				return input + 1, nil
+			}, Use(prevTaskID))
+		}
+	}
+
+	start := time.Now()
+	result, err := l.Run(context.Background(), nil)
+	duration := time.Since(start)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Should complete within reasonable time
+	require.Less(t, duration, 5*time.Second, "DAG execution took too long: %v", duration)
+
+	t.Logf("Large DAG (100 tasks) executed in %v", duration)
+}
+
+type User struct {
+	ID      int
+	Name    string
+	Email   string
+	Address Address
+}
+
+type Address struct {
+	Street string
+	City   string
+}
+
+type Order struct {
+	ID     int
+	UserID int
+	Amount float64
+}
+
+type Report struct {
+	UserName   string
+	OrderCount int
+	TotalSpent float64
+}
+
+func validTask(ctx context.Context, userID string) (User, error) {
+	return User{}, nil
 }
 
 func validTaskWithNoInput(ctx context.Context) error {
@@ -308,7 +783,7 @@ func anotherValidTask(ctx context.Context, orderID string) error {
 	return nil
 }
 
-func dependentTask(ctx context.Context, user user) error {
+func dependentTask(ctx context.Context, user User) error {
 	return nil
 }
 
