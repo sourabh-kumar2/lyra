@@ -152,6 +152,121 @@ func TestLyraResolveInputsMissingTaskResult(t *testing.T) {
 	require.Contains(t, err.Error(), "nonExistentTask")
 }
 
+func TestLyraResolveInputsNestedFieldAccess(t *testing.T) {
+	t.Parallel()
+
+	type Address struct {
+		City string
+	}
+
+	type User struct {
+		Address Address
+	}
+
+	task, err := internal.NewTask("nestedAccess",
+		func(ctx context.Context, city string) (string, error) { return "test", nil },
+		[]internal.InputSpec{Use("fetchUser", "Address", "City")})
+	require.NoError(t, err)
+
+	results := NewResult()
+	results.set("fetchUser", User{Address: Address{City: "Boston"}})
+
+	args, err := resolveInputs(context.Background(), task, results)
+
+	require.NoError(t, err)
+	require.Equal(t, "Boston", args[1].Interface())
+}
+
+func TestLyraResolveInputsNestedFieldAccessWithPointer(t *testing.T) {
+	t.Parallel()
+
+	type Address struct {
+		City string
+	}
+
+	type User struct {
+		Address *Address
+	}
+
+	tcs := []struct {
+		name     string
+		user     any
+		path     []string
+		expected string
+		wantErr  bool
+	}{
+		{
+			name: "address is pointer",
+			user: User{
+				Address: &Address{City: "Boston"},
+			},
+			path:     []string{"Address", "City"},
+			expected: "Boston",
+		},
+		{
+			name: "user is pointer",
+			user: &User{
+				Address: &Address{City: "Boston"},
+			},
+			path:     []string{"Address", "City"},
+			expected: "Boston",
+		},
+		{
+			name:    "user is nil pointer",
+			user:    (*User)(nil),
+			path:    []string{"Address", "City"},
+			wantErr: true,
+		},
+		{
+			name: "address is nil pointer",
+			user: User{
+				Address: nil,
+			},
+			path:    []string{"Address", "City"},
+			wantErr: true,
+		},
+		{
+			name:    "string value passed",
+			user:    "string",
+			path:    []string{"Address", "City"},
+			wantErr: true,
+		},
+		{
+			name: "access non existing field",
+			user: &User{
+				Address: &Address{City: "Boston"},
+			},
+			path:    []string{"Address", "Pincode"},
+			wantErr: true,
+		},
+		{
+			name:    "value is nil",
+			user:    nil,
+			path:    []string{"Address", "Pincode"},
+			wantErr: true,
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			task, err := internal.NewTask("nestedAccess",
+				func(ctx context.Context, city string) (string, error) { return "test", nil },
+				[]internal.InputSpec{Use("fetchUser", tc.path...)})
+			require.NoError(t, err)
+
+			results := NewResult()
+			results.set("fetchUser", tc.user)
+
+			args, err := resolveInputs(context.Background(), task, results)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expected, args[1].Interface())
+			}
+		})
+	}
+}
+
 func TestLyraResolveInputsNilValue(t *testing.T) {
 	t.Parallel()
 
