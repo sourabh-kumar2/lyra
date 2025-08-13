@@ -239,6 +239,17 @@ func TestDoConcurrency(t *testing.T) {
 	require.Len(t, l.tasks, 10)
 }
 
+func TestRunBuildError(t *testing.T) {
+	t.Parallel()
+
+	result, err := New().
+		Do("task-1", invalidTask).
+		Run(context.Background(), nil)
+
+	require.ErrorIs(t, err, errors.ErrMustHaveAtLeastContext)
+	require.Nil(t, result)
+}
+
 func TestRunEmptyDAG(t *testing.T) {
 	t.Parallel()
 

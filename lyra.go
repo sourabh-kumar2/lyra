@@ -47,7 +47,10 @@ func (l *Lyra) Do(taskID string, fn any, inputs ...internal.InputSpec) *Lyra {
 }
 
 // Run executes the DAG with the provided runtime inputs.
-func (*Lyra) Run(_ context.Context, runInputs map[string]any) (*Result, error) {
+func (l *Lyra) Run(_ context.Context, runInputs map[string]any) (*Result, error) {
+	if l.error != nil {
+		return nil, errors.Wrapf(l.error, "build error")
+	}
 	result := initialiseResult(runInputs)
 
 	return result, nil
