@@ -2,6 +2,7 @@ package lyra
 
 import (
 	"context"
+	"sync"
 
 	"github.com/sourabh-kumar2/lyra/internal"
 )
@@ -10,21 +11,24 @@ import (
 // with compile-time type safety for result passing between tasks.
 // It replaces manual sync.WaitGroup and channel
 // coordination with a clean, fluent API.
-type Lyra struct{}
+type Lyra struct {
+	mu    sync.RWMutex
+	tasks map[string]*internal.Task
+	error error
+}
 
 // New creates a new Lyra instance for building and executing DAGs.
 //
 //	l := lyra.New()
 //	l.Do("task1", taskFunc1).Do("task2", taskFunc2).After("task1")
 func New() *Lyra {
-	return &Lyra{}
+	return &Lyra{
+		tasks: make(map[string]*internal.Task),
+	}
 }
 
 // Do adds a task to the DAG and returns a TaskBuilder for chaining.
 func (l *Lyra) Do(taskID string, fn any, inputs ...internal.InputSpec) *Lyra {
-	_ = taskID
-	_ = fn
-	_ = inputs
 	return l
 }
 
