@@ -151,3 +151,21 @@ func TestLyraResolveInputsMissingTaskResult(t *testing.T) {
 	require.Nil(t, args)
 	require.Contains(t, err.Error(), "nonExistentTask")
 }
+
+func TestLyraResolveInputsNilValue(t *testing.T) {
+	t.Parallel()
+
+	task, err := internal.NewTask("nilValue",
+		func(ctx context.Context, user *string) (string, error) { return "test", nil },
+		[]internal.InputSpec{Use("producer")})
+	require.NoError(t, err)
+
+	results := NewResult()
+	results.set("producer", (*string)(nil)) // Nil pointer
+
+	args, err := resolveInputs(context.Background(), task, results)
+
+	require.NoError(t, err)
+	require.Len(t, args, 2)
+	require.True(t, args[1].IsNil())
+}
