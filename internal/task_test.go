@@ -221,3 +221,50 @@ func TestGetInputParams(t *testing.T) {
 		reflect.TypeOf(""),
 	}, types)
 }
+
+func TestGetFunction(t *testing.T) {
+	t.Parallel()
+	inputSpecs := []InputSpec{
+		{
+			Type:   RuntimeInputSpec,
+			Source: "userID",
+		},
+	}
+	task, err := NewTask(
+		"id",
+		func(ctx context.Context, userID string) error { return nil },
+		inputSpecs,
+	)
+
+	require.NoError(t, err)
+	fn := task.GetFunction()
+	require.NotNil(t, fn)
+}
+
+func TestGetOutputParams(t *testing.T) {
+	t.Parallel()
+
+	tcs := []struct {
+		name     string
+		fn       any
+		expected reflect.Type
+	}{
+		{
+			name: "no output",
+			fn:   func(ctx context.Context) error { return nil },
+		},
+		{
+			name:     "string output",
+			fn:       func(ctx context.Context) (string, error) { return "", nil },
+			expected: reflect.TypeOf(""),
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			task, err := NewTask("id", tc.fn, nil)
+			require.NoError(t, err)
+			outType := task.GetOutputParams()
+			require.Equal(t, tc.expected, outType)
+		})
+	}
+}

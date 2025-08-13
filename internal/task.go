@@ -57,3 +57,13 @@ func (t *Task) GetDependencies() []string {
 func (t *Task) GetInputParams() (specs []InputSpec, types []reflect.Type) {
 	return t.inputSpecs, t.fnInfo.inputTypes
 }
+
+// GetFunction returns the callable function.
+func (t *Task) GetFunction() any {
+	return t.fn
+}
+
+// GetOutputParams returns the output type if it exists.
+func (t *Task) GetOutputParams() reflect.Type {
+	return t.fnInfo.outputType
+}
