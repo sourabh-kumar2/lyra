@@ -117,3 +117,37 @@ func TestLyraResolveInputsTypeMismatch(t *testing.T) {
 	require.ErrorIs(t, err, errors.ErrInvalidParamType)
 	require.Nil(t, args)
 }
+
+func TestLyraResolveInputsMissingRuntimeInput(t *testing.T) {
+	t.Parallel()
+
+	task, err := internal.NewTask("missingInput",
+		func(ctx context.Context, userID int) (string, error) { return "test", nil },
+		[]internal.InputSpec{UseRun("userID")})
+	require.NoError(t, err)
+
+	results := NewResult() // Empty results
+
+	args, err := resolveInputs(context.Background(), task, results)
+
+	require.ErrorIs(t, err, errors.ErrTaskNotFound)
+	require.Nil(t, args)
+	require.Contains(t, err.Error(), "userID")
+}
+
+func TestLyraResolveInputsMissingTaskResult(t *testing.T) {
+	t.Parallel()
+
+	task, err := internal.NewTask("missingDep",
+		func(ctx context.Context, userData string) (string, error) { return "test", nil },
+		[]internal.InputSpec{Use("nonExistentTask")})
+	require.NoError(t, err)
+
+	results := NewResult()
+
+	args, err := resolveInputs(context.Background(), task, results)
+
+	require.ErrorIs(t, err, errors.ErrTaskNotFound)
+	require.Nil(t, args)
+	require.Contains(t, err.Error(), "nonExistentTask")
+}
