@@ -61,29 +61,34 @@ func extractNestedField(value any, path string) (any, error) {
 		return nil, stderr.New("value is nil")
 	}
 
-	v := reflect.ValueOf(value)
-	parts := strings.Split(path, ".")
+	current := reflect.ValueOf(value)
+	fields := strings.Split(path, ".")
 
-	for _, part := range parts {
+	for _, fieldName := range fields {
+		if current.Kind() == reflect.Ptr && current.IsNil() {
+			return nil, fmt.Errorf("nil pointer encountered while accessing field %q", fieldName)
+		}
+
 		// Dereference pointers
-		if v.Kind() == reflect.Ptr {
-			if v.IsNil() {
-				return nil, fmt.Errorf("nil pointer while accessing %q", part)
-			}
-			v = v.Elem()
+		if current.Kind() == reflect.Ptr {
+			current = current.Elem()
 		}
 
-		if v.Kind() != reflect.Struct {
-			return nil, fmt.Errorf("field %q is not a struct (found %s)", part, v.Kind())
+		if current.Kind() != reflect.Struct {
+			return nil, fmt.Errorf("field %q is not a struct (found %s)", fieldName, current.Kind())
 		}
 
-		f := v.FieldByName(part)
-		if !f.IsValid() {
-			return nil, fmt.Errorf("field %q not found in %s", part, v.Type())
+		fieldValue := current.FieldByName(fieldName)
+		if !fieldValue.IsValid() {
+			return nil, fmt.Errorf("field %q not found in type %v", fieldName, current.Type())
 		}
 
-		v = f
+		if !fieldValue.CanInterface() {
+			return nil, fmt.Errorf("field %q is not exported in type %v", fieldName, current.Type())
+		}
+
+		current = fieldValue
 	}
 
-	return v.Interface(), nil
+	return current.Interface(), nil
 }

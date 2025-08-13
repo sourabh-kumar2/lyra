@@ -185,6 +185,7 @@ func TestLyraResolveInputsNestedFieldAccessWithPointer(t *testing.T) {
 	}
 
 	type User struct {
+		id      string
 		Address *Address
 	}
 
@@ -212,7 +213,15 @@ func TestLyraResolveInputsNestedFieldAccessWithPointer(t *testing.T) {
 			expected: "Boston",
 		},
 		{
-			name:    "user is nil pointer",
+			name: "user is nil pointer",
+			user: &User{
+				id: "1232",
+			},
+			path:    []string{"id"},
+			wantErr: true,
+		},
+		{
+			name:    "user unexported field",
 			user:    (*User)(nil),
 			path:    []string{"Address", "City"},
 			wantErr: true,
