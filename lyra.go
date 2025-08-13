@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/sourabh-kumar2/lyra/errors"
 	"github.com/sourabh-kumar2/lyra/internal"
 )
 
@@ -29,6 +30,19 @@ func New() *Lyra {
 
 // Do adds a task to the DAG and returns a TaskBuilder for chaining.
 func (l *Lyra) Do(taskID string, fn any, inputs ...internal.InputSpec) *Lyra {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	task, err := internal.NewTask(taskID, fn, inputs)
+	if err != nil {
+		l.error = errors.Wrapf(err, "failed to add task %q", taskID)
+		return l
+	}
+	if _, exists := l.tasks[taskID]; exists {
+		l.error = errors.Wrapf(errors.ErrDuplicateTask, "failed to add task %q", taskID)
+		return l
+	}
+	l.tasks[taskID] = task
 	return l
 }
 

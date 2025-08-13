@@ -44,6 +44,9 @@ var ErrMissingDependency = errors.New("dependency not found")
 // ErrInvalidInput is returned when task has invalid input spec.
 var ErrInvalidInput = errors.New("invalid input")
 
+// ErrDuplicateTask is returned when another task with same id is registered again.
+var ErrDuplicateTask = errors.New("duplicate task")
+
 // ErrTaskNotFound is returned when task is not found.
 var ErrTaskNotFound = errors.New("task not found")
 
