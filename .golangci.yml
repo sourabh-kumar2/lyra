@@ -93,7 +93,7 @@ linters:
             - 120
         - name: add-constant
           arguments:
-            - allowInts: "0,1"
+            - allowInts: "0,1,2"
               allowStrs: '""'
           exclude:
             - TEST

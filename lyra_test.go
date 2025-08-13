@@ -276,6 +276,22 @@ func TestRunEmptyDAGWithRunInputs(t *testing.T) {
 	require.Equal(t, result.data, runInputs)
 }
 
+func TestRunSingleTaskNoInputs(t *testing.T) {
+	t.Parallel()
+
+	l := New().
+		Do("hello", func(ctx context.Context) (string, error) {
+			return "world", nil
+		})
+
+	result, err := l.Run(context.Background(), nil)
+
+	require.NoError(t, err)
+	helloResult, err := result.Get("hello")
+	require.NoError(t, err)
+	require.Equal(t, "world", helloResult)
+}
+
 type user struct {
 	ID string
 }
