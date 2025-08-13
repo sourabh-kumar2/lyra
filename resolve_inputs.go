@@ -16,8 +16,9 @@ func resolveInputs(
 	task *internal.Task,
 	results *Result,
 ) ([]reflect.Value, error) {
-	params := []reflect.Value{reflect.ValueOf(ctx)}
 	specs, types := task.GetInputParams()
+	args := make([]reflect.Value, len(types))
+	args[0] = reflect.ValueOf(ctx) // First arg is always context
 
 	for i, spec := range specs {
 		value, err := results.Get(spec.Source)
@@ -30,30 +31,32 @@ func resolveInputs(
 			)
 		}
 		if spec.Field != "" {
-			value, err = fieldTypeFromPath(value, spec.Field)
+			value, err = extractNestedField(value, spec.Field)
 			if err != nil {
 				return nil, errors.Wrapf(err, "parameter %d", i+2)
 			}
 		}
 
-		if reflect.TypeOf(value) != types[i+1] { // first is context.Context
+		expectedType := types[i+1] // +1 to skip context
+		actualValue := reflect.ValueOf(value)
+		if !actualValue.Type().AssignableTo(expectedType) {
 			return nil, errors.Wrapf(
 				errors.ErrInvalidParamType,
 				"parameter %d -> exptected type %s, got %s",
 				i+2, // array offset (1) + first param is context (1) = 2
-				types[i+1],
-				reflect.TypeOf(value),
+				expectedType,
+				actualValue.Type(),
 			)
 		}
-		params = append(params, reflect.ValueOf(value))
+		args[i+1] = actualValue
 	}
 
-	return params, nil
+	return args, nil
 }
 
 //nolint:err113 // static error because its too specific
 //revive:disable-next-line:cognitive-complexity // struct walking algo is complex.
-func fieldTypeFromPath(value any, path string) (any, error) {
+func extractNestedField(value any, path string) (any, error) {
 	if value == nil {
 		return nil, stderr.New("value is nil")
 	}
