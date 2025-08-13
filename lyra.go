@@ -91,7 +91,7 @@ func (l *Lyra) getStages() ([][]string, error) {
 
 func (l *Lyra) process(ctx context.Context, stages [][]string, result *Result) {
 	for _, stage := range stages {
-		l.executeStage(ctx, stage, result)
+		_ = l.executeStage(ctx, stage, result)
 	}
 }
 
@@ -107,13 +107,15 @@ func (l *Lyra) executeStage(ctx context.Context, stage []string, result *Result)
 		values := reflect.ValueOf(task.GetFunction()).Call(args)
 		if len(values) == 2 {
 			if !values[1].IsNil() {
-				return values[1].Interface().(error)
+				// revive:disable-next-line:unchecked-type-assertion // It's always error
+				err, _ = values[1].Interface().(error)
+				return err
 			}
 			result.set(taskID, values[0].Interface())
-		} else { // just (error)
-			if !values[0].IsNil() {
-				return values[0].Interface().(error)
-			}
+		} else if !values[0].IsNil() { // just (error)
+			// revive:disable-next-line:unchecked-type-assertion // It's always error
+			err, _ = values[0].Interface().(error)
+			return err
 		}
 	}
 	return nil

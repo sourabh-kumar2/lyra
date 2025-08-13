@@ -268,3 +268,22 @@ func TestGetOutputParams(t *testing.T) {
 		})
 	}
 }
+
+func TestGetID(t *testing.T) {
+	t.Parallel()
+	inputSpecs := []InputSpec{
+		{
+			Type:   RuntimeInputSpec,
+			Source: "userID",
+		},
+	}
+	taskID := "task-1"
+	task, err := NewTask(
+		taskID,
+		func(ctx context.Context, userID string) error { return nil },
+		inputSpecs,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, taskID, task.GetID())
+}

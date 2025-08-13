@@ -67,3 +67,8 @@ func (t *Task) GetFunction() any {
 func (t *Task) GetOutputParams() reflect.Type {
 	return t.fnInfo.outputType
 }
+
+// GetID returns task id.
+func (t *Task) GetID() string {
+	return t.id
+}
