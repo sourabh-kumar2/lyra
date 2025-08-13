@@ -13,6 +13,10 @@ func validTaskFunc(ctx context.Context, userID string) (string, error) {
 	return "result", nil
 }
 
+func multiParamTaskFunc(ctx context.Context, userID string, count int) (string, error) {
+	return "result", nil
+}
+
 func invalidTaskFunc(userID string) (string, error) { // Missing context
 	return "result", nil
 }
@@ -23,16 +27,23 @@ func TestNewTask(t *testing.T) {
 	t.Parallel()
 
 	tcs := []struct {
-		name    string
-		id      string
-		fn      any
-		wantErr bool
-		errType error
+		name       string
+		id         string
+		fn         any
+		wantErr    bool
+		inputSpecs []InputSpec
+		errType    error
 	}{
 		{
-			name:    "valid node creation",
-			id:      "testTask",
-			fn:      validTaskFunc,
+			name: "valid node creation",
+			id:   "testTask",
+			fn:   validTaskFunc,
+			inputSpecs: []InputSpec{
+				{
+					Type:   RuntimeInputSpec,
+					Source: "userID",
+				},
+			},
 			wantErr: false,
 		},
 		{
@@ -70,11 +81,32 @@ func TestNewTask(t *testing.T) {
 			wantErr: true,
 			errType: errors.ErrMustReturnAtLeastError,
 		},
+		{
+			name: "params count mismatch should fail",
+			id:   "testTask",
+			fn:   multiParamTaskFunc,
+			inputSpecs: []InputSpec{
+				{
+					Type:   RuntimeInputSpec,
+					Source: "userID",
+				},
+				{
+					Type:   RuntimeInputSpec,
+					Source: "count",
+				},
+				{
+					Type:   RuntimeInputSpec,
+					Source: "order",
+				},
+			},
+			wantErr: true,
+			errType: errors.ErrTaskParamCountMismatch,
+		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			task, err := NewTask(tc.id, tc.fn, []InputSpec{})
+			task, err := NewTask(tc.id, tc.fn, tc.inputSpecs)
 
 			if tc.wantErr {
 				require.Error(t, err)

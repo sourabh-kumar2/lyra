@@ -24,6 +24,15 @@ func NewTask(id string, fn any, inputSpecs []InputSpec) (*Task, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid function for task %q: %w", id, err)
 	}
+	if len(inputSpecs) != len(fnInfo.inputTypes)-1 {
+		return nil, errors.Wrapf(
+			errors.ErrTaskParamCountMismatch,
+			"invalid number of input specs for task %q, want: %d, got: %d",
+			id,
+			len(fnInfo.inputTypes),
+			len(inputSpecs)+1,
+		)
+	}
 	return &Task{
 		id:         id,
 		fn:         fn,
