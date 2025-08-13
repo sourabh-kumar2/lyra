@@ -122,3 +122,78 @@ func TestNewTask(t *testing.T) {
 		})
 	}
 }
+
+func TestGetDependencies(t *testing.T) {
+	t.Parallel()
+
+	tcs := []struct {
+		name       string
+		fn         any
+		inputSpecs []InputSpec
+		expected   []string
+	}{
+		{
+			name:       "no dependencies",
+			inputSpecs: []InputSpec{},
+			fn:         func(ctx context.Context) error { return nil },
+			expected:   []string{},
+		},
+		{
+			name:       "nil dependency",
+			fn:         func(ctx context.Context) error { return nil },
+			inputSpecs: nil,
+			expected:   []string{},
+		},
+		{
+			name: "one runtime dependency",
+			fn:   validTaskFunc,
+			inputSpecs: []InputSpec{
+				{
+					Type:   RuntimeInputSpec,
+					Source: "userID",
+				},
+			},
+			expected: []string{},
+		},
+		{
+			name: "one task result dependencies",
+			fn:   func(ctx context.Context, user User) error { return nil },
+			inputSpecs: []InputSpec{
+				{
+					Type:   TaskResultInputSpec,
+					Source: "fetchUser",
+				},
+			},
+			expected: []string{"fetchUser"},
+		},
+		{
+			name: "multiple runtime dependencies",
+			fn:   func(ctx context.Context, user User, userID string, order Order) error { return nil },
+			inputSpecs: []InputSpec{
+				{
+					Type:   TaskResultInputSpec,
+					Source: "fetchUser",
+				},
+				{
+					Type:   RuntimeInputSpec,
+					Source: "userID",
+				},
+				{
+					Type:   TaskResultInputSpec,
+					Source: "fetchOrder",
+				},
+			},
+			expected: []string{"fetchUser", "fetchOrder"},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			task, err := NewTask("test", tc.fn, tc.inputSpecs)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+
+			deps := task.GetDependencies()
+			require.Equal(t, tc.expected, deps)
+		})
+	}
+}

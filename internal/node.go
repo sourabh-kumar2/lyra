@@ -40,3 +40,14 @@ func NewTask(id string, fn any, inputSpecs []InputSpec) (*Task, error) {
 		fnInfo:     fnInfo,
 	}, nil
 }
+
+// GetDependencies returns the node dependencies.
+func (t *Task) GetDependencies() []string {
+	deps := make([]string, 0)
+	for _, spec := range t.inputSpecs {
+		if spec.Type == TaskResultInputSpec {
+			deps = append(deps, spec.Source)
+		}
+	}
+	return deps
+}
