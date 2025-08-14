@@ -1,6 +1,6 @@
 module github.com/sourabh-kumar2/lyra
 
-go 1.24.5
+go 1.23.12
 
 require github.com/stretchr/testify v1.10.0
 
