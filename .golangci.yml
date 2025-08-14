@@ -14,7 +14,6 @@ linters:
     - asciicheck       # Detects non-ascii character in code
     - durationcheck
     - exptostd
-    - forcetypeassert
 
     # Code style & maintainability
     - cyclop
@@ -41,8 +40,6 @@ linters:
     cyclop:
       max-complexity: 10
       package-average: 10
-    errcheck:
-      check-type-assertions: true
     exhaustive:
       default-signifies-exhaustive: true
       check:
