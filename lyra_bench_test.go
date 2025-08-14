@@ -3,11 +3,12 @@ package lyra
 import (
 	"context"
 	"fmt"
-	"github.com/sourabh-kumar2/lyra/internal"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/sourabh-kumar2/lyra/internal"
 )
 
 // BenchmarkSimpleDAG tests a basic 3-task DAG.
@@ -124,9 +125,9 @@ func BenchmarkManualCoordination(b *testing.B) {
 	}
 }
 
-// BenchmarkDAGConstruction tests just the DAG building performance
+// BenchmarkDAGConstruction tests just the DAG building performance.
 func BenchmarkDAGConstruction(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		l := New()
 		l.Do("fetchUser", fetchUser, UseRun("userID"))
 		l.Do("fetchOrders", fetchOrders, UseRun("userID"))
@@ -136,7 +137,7 @@ func BenchmarkDAGConstruction(b *testing.B) {
 	}
 }
 
-// BenchmarkDAGValidation tests validation performance
+// BenchmarkDAGValidation tests validation performance.
 func BenchmarkDAGValidation(b *testing.B) {
 	l := New()
 	l.Do("fetchUser", fetchUser, UseRun("userID"))
@@ -146,7 +147,7 @@ func BenchmarkDAGValidation(b *testing.B) {
 	l.Do("processUserData", processUserData, Use("fetchUser"), Use("fetchSettings"))
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Test just the stage generation (which includes validation)
 		stages, err := l.getStages()
 		if err != nil {
@@ -156,9 +157,9 @@ func BenchmarkDAGValidation(b *testing.B) {
 	}
 }
 
-// BenchmarkCPUIntensive tests CPU-bound tasks
+// BenchmarkCPUIntensive tests CPU-bound tasks.
 func BenchmarkCPUIntensive(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		l := New()
 		l.Do("cpu1", cpuIntensiveTask, UseRun("iterations"))
 		l.Do("cpu2", cpuIntensiveTask, UseRun("iterations"))
@@ -174,9 +175,9 @@ func BenchmarkCPUIntensive(b *testing.B) {
 	}
 }
 
-// BenchmarkMemoryIntensive tests memory allocation patterns
+// BenchmarkMemoryIntensive tests memory allocation patterns.
 func BenchmarkMemoryIntensive(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		l := New()
 		l.Do("mem1", memoryIntensiveTask, UseRun("size"))
 		l.Do("mem2", memoryIntensiveTask, UseRun("size"))
@@ -194,13 +195,15 @@ func BenchmarkMemoryIntensive(b *testing.B) {
 	}
 }
 
-// BenchmarkScalabilityTest tests with many small tasks
+// BenchmarkScalabilityTest tests with many small tasks.
+//
+//revive:disable-next-line:cognitive-complexity
 func BenchmarkScalabilityTest(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		l := New()
 
 		// Create 10 independent tasks
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			taskID := fmt.Sprintf("task%d", j)
 			l.Do(taskID, func(ctx context.Context, input int) (int, error) {
 				return input * 2, nil
@@ -209,18 +212,20 @@ func BenchmarkScalabilityTest(b *testing.B) {
 
 		// Create a final task that depends on all others
 		inputs := make([]internal.InputSpec, 10)
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			inputs[j] = Use(fmt.Sprintf("task%d", j))
 		}
 
-		l.Do("final", func(ctx context.Context, ip1, ip2, ip3, ip4, ip5, ip6, ip7, ip8, ip9, ip10 int) (int, error) {
-
-			sum := 0
-			for _, v := range []int{ip1, ip2, ip3, ip4, ip5, ip6, ip7, ip8, ip9, ip10} {
-				sum += v
-			}
-			return sum, nil
-		}, inputs...)
+		l.Do(
+			"final",
+			func(ctx context.Context, ip1, ip2, ip3, ip4, ip5, ip6, ip7, ip8, ip9, ip10 int) (int, error) {
+				sum := 0
+				for _, v := range []int{ip1, ip2, ip3, ip4, ip5, ip6, ip7, ip8, ip9, ip10} {
+					sum += v
+				}
+				return sum, nil
+			},
+			inputs...)
 
 		_, err := l.Run(context.Background(), map[string]any{"input": 42})
 		if err != nil {
@@ -229,14 +234,15 @@ func BenchmarkScalabilityTest(b *testing.B) {
 	}
 }
 
-// Benchmark with memory and allocation tracking
+// Benchmark with memory and allocation tracking.
 func BenchmarkWithMemStats(b *testing.B) {
 	var m1, m2 runtime.MemStats
+	//revive:disable-next-line:call-to-gc
 	runtime.GC()
 	runtime.ReadMemStats(&m1)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		l := New()
 		l.Do("fetchUser", fetchUser, UseRun("userID"))
 		l.Do("fetchOrders", fetchOrders, UseRun("userID"))
@@ -249,13 +255,14 @@ func BenchmarkWithMemStats(b *testing.B) {
 	}
 	b.StopTimer()
 
+	//revive:disable-next-line:call-to-gc
 	runtime.GC()
 	runtime.ReadMemStats(&m2)
 
 	b.ReportMetric(float64(m2.Mallocs-m1.Mallocs)/float64(b.N), "mallocs/op")
 }
 
-// Test for lock contention with many goroutines
+// Test for lock contention with many goroutines.
 func BenchmarkLockContention(b *testing.B) {
 	l := New()
 	l.Do("shared", func(ctx context.Context) (int, error) {
@@ -264,7 +271,7 @@ func BenchmarkLockContention(b *testing.B) {
 	})
 
 	// Multiple tasks that depend on the shared task
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		taskID := fmt.Sprintf("consumer%d", i)
 		l.Do(taskID, func(ctx context.Context, input int) (int, error) {
 			return input + 1, nil
@@ -272,7 +279,7 @@ func BenchmarkLockContention(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := l.Run(context.Background(), map[string]any{})
 		if err != nil {
 			b.Fatal(err)
@@ -280,7 +287,7 @@ func BenchmarkLockContention(b *testing.B) {
 	}
 }
 
-// Parallel benchmark to test concurrent usage
+// Parallel benchmark to test concurrent usage.
 func BenchmarkParallelExecution(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -297,13 +304,15 @@ func BenchmarkParallelExecution(b *testing.B) {
 	})
 }
 
-// Benchmark different DAG sizes
+// Benchmark different DAG sizes.
+//
+//revive:disable-next-line:cognitive-complexity
 func BenchmarkDAGSizes(b *testing.B) {
 	sizes := []int{5, 10, 25, 50}
 
 	for _, size := range sizes {
 		b.Run(fmt.Sprintf("size_%d", size), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				l := New()
 
 				// Create a chain of tasks
@@ -387,16 +396,16 @@ func processUserData(ctx context.Context, user User, settings map[string]string)
 	return fmt.Sprintf("Processed %s with theme %s", user.Name, settings["theme"]), nil
 }
 
-// CPU-intensive task for testing
+// CPU-intensive task for testing.
 func cpuIntensiveTask(ctx context.Context, iterations int) (int, error) {
 	sum := 0
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		sum += i * i
 	}
 	return sum, nil
 }
 
-// Memory-intensive task
+// Memory-intensive task.
 func memoryIntensiveTask(ctx context.Context, size int) ([]byte, error) {
 	data := make([]byte, size)
 	for i := range data {
