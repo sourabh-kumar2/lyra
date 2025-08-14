@@ -15,8 +15,6 @@ tasks:
     silent: true
 
   test:
-    deps:
-      - lint
     desc: Runs test with coverage
     cmd: go test -v -race -cover -coverprofile=coverage.txt -covermode=atomic ./...
     silent: true

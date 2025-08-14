@@ -5,6 +5,7 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/sourabh-kumar2/lyra)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/sourabh-kumar2/lyra)](https://github.com/sourabh-kumar2/lyra/releases)
+[![CI](https://github.com/sourabh-kumar2/lyra/workflows/CI/badge.svg)](https://github.com/sourabh-kumar2/lyra/actions)
 
 Lyra is a Go library for orchestrating dependent tasks in a Directed Acyclic Graph (DAG) with automatic concurrency and type-safe result passing between tasks.
 
