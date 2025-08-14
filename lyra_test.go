@@ -896,27 +896,37 @@ func TestConcurrentStageContextCancellation(t *testing.T) {
 }
 
 type User struct {
-	ID      int
-	Name    string
-	Email   string
-	Address Address
+	ID      int     `json:"id"`
+	Name    string  `json:"name"`
+	Email   string  `json:"email"`
+	Address Address `json:"address"`
 }
 
 type Address struct {
-	Street string
-	City   string
+	Street string `json:"street"`
+	City   string `json:"city"`
+	State  string `json:"state"`
 }
 
 type Order struct {
-	ID     int
-	UserID int
-	Amount float64
+	ID     int     `json:"id"`
+	UserID int     `json:"user_id"`
+	Amount float64 `json:"amount"`
+	Items  []Item  `json:"items"`
+}
+
+type Item struct {
+	ID       int     `json:"id"`
+	Name     string  `json:"name"`
+	Price    float64 `json:"price"`
+	Quantity int     `json:"quantity"`
 }
 
 type Report struct {
-	UserName   string
-	OrderCount int
-	TotalSpent float64
+	UserID     int     `json:"user_id"`
+	UserName   string  `json:"user_name"`
+	TotalSpent float64 `json:"total_spent"`
+	OrderCount int     `json:"order_count"`
 }
 
 func validTask(ctx context.Context, userID string) (User, error) {
@@ -931,6 +941,7 @@ func anotherValidTask(ctx context.Context, orderID string) error {
 	return nil
 }
 
+//nolint:gocritic // This is test case.
 func dependentTask(ctx context.Context, user User) error {
 	return nil
 }
