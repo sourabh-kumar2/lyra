@@ -6,11 +6,23 @@ import (
 
 // DependencyDAG represents a directed acyclic graph for managing task dependencies.
 // It uses Kahn's algorithm for topological sorting and cycle detection.
+//
+// The zero value is not usable; create instances with NewDependencyDAG().
 type DependencyDAG struct {
 	deps map[string][]string
 }
 
-// NewDependencyDAG creates a dependency dag object.
+// NewDependencyDAG creates a dependency DAG object from a dependency map.
+// The map keys are node IDs and values are slices of their dependency node IDs.
+//
+// Example:
+//
+//	dependencies := map[string][]string{
+//		"task1": {},                    // No dependencies
+//		"task2": {"task1"},             // Depends on task1
+//		"task3": {"task1", "task2"},    // Depends on both task1 and task2
+//	}
+//	dag := graph.NewDependencyDAG(dependencies)
 func NewDependencyDAG(dependencies map[string][]string) *DependencyDAG {
 	return &DependencyDAG{
 		deps: dependencies,
@@ -18,8 +30,19 @@ func NewDependencyDAG(dependencies map[string][]string) *DependencyDAG {
 }
 
 // GetExecutionLevels returns the nodes grouped by execution levels using Kahn's algorithm.
-// Nodes in the same level can be executed concurrently as they have no dependencies between them.
-// Returns an error if cycles are detected or if missing dependencies are found.
+//
+// Nodes in the same level can be executed concurrently as they have no dependencies
+// between them. Each level must complete before the next level can begin.
+//
+// Returns a slice of string slices, where each inner slice contains node IDs
+// that can run in parallel.
+//
+// Returns an error if:
+//   - Cycles are detected in the dependency graph
+//   - Missing dependencies are found (node depends on non-existent node)
+//
+// Example output: [["task1", "task2"], ["task3"], ["task4"]]
+// This means task1 and task2 can run in parallel, then task3, then task4.
 //
 //nolint:cyclop // Kahn's algo
 //revive:disable-next-line:cyclomatic,cognitive-complexity

@@ -13,8 +13,9 @@ import (
 
 // Lyra coordinates dependent tasks that can run concurrently when possible,
 // with compile-time type safety for result passing between tasks.
-// It replaces manual sync.WaitGroup and channel
-// coordination with a clean, fluent API.
+// It replaces manual sync.WaitGroup and channel coordination with a clean, fluent API.
+//
+// The zero value is not usable; create instances with New().
 type Lyra struct {
 	mu    sync.RWMutex
 	tasks map[string]*internal.Task
@@ -23,15 +24,39 @@ type Lyra struct {
 
 // New creates a new Lyra instance for building and executing DAGs.
 //
+// Example:
+//
 //	l := lyra.New()
-//	l.Do("task1", taskFunc1).Do("task2", taskFunc2).After("task1")
+//	l.Do("task1", taskFunc1, lyra.UseRun("input"))
+//	l.Do("task2", taskFunc2, lyra.Use("task1"))
+//	results, err := l.Run(ctx, map[string]any{"input": "value"})
 func New() *Lyra {
 	return &Lyra{
 		tasks: make(map[string]*internal.Task),
 	}
 }
 
-// Do adds a task to the DAG and returns a TaskBuilder for chaining.
+// Do adds a task to the DAG with the specified function and input specifications.
+//
+// The taskID must be unique within the DAG and will be used to reference this
+// task's results in other tasks or in the final results.
+//
+// The fn parameter must be a function with one of these signatures:
+//   - func(context.Context) error
+//   - func(context.Context) (ResultType, error)
+//   - func(context.Context, input1, input2, ...) (ResultType, error)
+//
+// Input specifications define where each parameter (after context) gets its value:
+//   - Use("taskID") - use entire result from another task
+//   - Use("taskID", "field") - use specific field from task result
+//   - UseRun("key") - use value from runtime inputs map
+//
+// Returns the same Lyra instance for method chaining.
+//
+// Example:
+//
+//	l.Do("fetchUser", fetchUserFunc, lyra.UseRun("userID"))
+//	l.Do("processUser", processFunc, lyra.Use("fetchUser", "Name"))
 func (l *Lyra) Do(taskID string, fn any, inputs ...internal.InputSpec) *Lyra {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -50,6 +75,31 @@ func (l *Lyra) Do(taskID string, fn any, inputs ...internal.InputSpec) *Lyra {
 }
 
 // Run executes the DAG with the provided runtime inputs.
+//
+// The method validates the DAG structure, detects cycles, and executes tasks
+// in the optimal order with maximum concurrency. Tasks with no dependencies
+// between them run in parallel.
+//
+// The runInputs map provides initial values that can be referenced by tasks
+// using UseRun() input specifications.
+//
+// Returns a Result object containing all task outputs, or an error if:
+//   - The DAG contains cycles
+//   - Dependencies reference non-existent tasks
+//   - Parameter types don't match between tasks
+//   - Any task function returns an error
+//
+// Example:
+//
+//	results, err := l.Run(ctx, map[string]any{
+//		"userID": 123,
+//		"apiKey": "secret",
+//	})
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	user, _ := results.Get("fetchUser")
 func (l *Lyra) Run(ctx context.Context, runInputs map[string]any) (*Result, error) {
 	if l.error != nil {
 		return nil, errors.Wrapf(l.error, "build error")

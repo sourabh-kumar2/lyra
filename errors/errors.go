@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+// Common error variables that can be checked using errors.Is():
+
 // ErrMustBeFunction is returned when the provided value is not a function.
 var ErrMustBeFunction = errors.New("must be a function")
 
@@ -32,7 +34,7 @@ var ErrVariadicNotSupported = errors.New("variadic functions are not supported")
 // ErrTaskIDCannotBeEmpty is returned when the task id is empty.
 var ErrTaskIDCannotBeEmpty = errors.New("task id must not be empty")
 
-// ErrTaskParamCountMismatch is returned when the task has params mismatch.
+// ErrTaskParamCountMismatch is returned when input specs don't match function parameters.
 var ErrTaskParamCountMismatch = errors.New("task params count mismatch")
 
 // ErrCyclicDependency is returned when DAG contains circular dependencies.
@@ -41,17 +43,25 @@ var ErrCyclicDependency = errors.New("cyclic dependency detected")
 // ErrMissingDependency is returned when referenced dependency doesn't exist.
 var ErrMissingDependency = errors.New("dependency not found")
 
-// ErrInvalidParamType is returned when the task expects input in different format then the
-// provided.
+// ErrInvalidParamType is returned when parameter types don't match between tasks.
 var ErrInvalidParamType = errors.New("invalid parameter type received")
 
 // ErrDuplicateTask is returned when another task with same id is registered again.
 var ErrDuplicateTask = errors.New("duplicate task")
 
-// ErrTaskNotFound is returned when task is not found.
+// ErrTaskNotFound is returned when task is not found in results.
 var ErrTaskNotFound = errors.New("task not found")
 
-// Wrapf returns the wrapped error.
+// Wrapf returns a formatted wrapped error with context.
+// If err is nil, returns a new formatted error.
+// Otherwise, wraps the error with additional context.
+//
+// Example:
+//
+//	if err != nil {
+//		return errors.Wrapf(err, "failed to process user %d", userID)
+//	}
+//
 // nolint:err113 // we are wrapping here so needed.
 func Wrapf(err error, format string, args ...any) error {
 	if err == nil {

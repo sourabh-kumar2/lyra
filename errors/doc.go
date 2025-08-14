@@ -1,2 +1,2 @@
-// Package errors contains the errors mapping.
+// Package errors contains error definitions and utilities.
 package errors

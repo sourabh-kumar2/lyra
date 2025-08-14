@@ -1,2 +1,2 @@
-// Package graph provides internal implementation details for the DAG orchestrator.
+// Package graph contains DAG analysis and execution ordering algorithms.
 package graph

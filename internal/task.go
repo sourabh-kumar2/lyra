@@ -8,7 +8,8 @@ import (
 	"github.com/sourabh-kumar2/lyra/errors"
 )
 
-// Task represents a single task in a DAG.
+// Task represents a single task node in the DAG with its function and dependencies.
+// This type is used internally and should not be created directly.
 type Task struct {
 	id         string
 	fn         any
@@ -16,7 +17,13 @@ type Task struct {
 	inputSpecs []InputSpec
 }
 
-// NewTask creates a task node.
+// NewTask creates a task node with validation.
+// This function is used internally and validates that:
+//   - The task ID is not empty
+//   - The function signature is valid
+//   - The number of input specs matches function parameters
+//
+// Returns an error if validation fails.
 func NewTask(id string, fn any, inputSpecs []InputSpec) (*Task, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, errors.ErrTaskIDCannotBeEmpty
@@ -42,7 +49,9 @@ func NewTask(id string, fn any, inputSpecs []InputSpec) (*Task, error) {
 	}, nil
 }
 
-// GetDependencies returns the node dependencies.
+// GetDependencies returns the task IDs that this task depends on.
+// Only returns dependencies from TaskResultInputSpec types (lyra.Use() calls),
+// not runtime inputs (lyra.UseRun() calls).
 func (t *Task) GetDependencies() []string {
 	deps := make([]string, 0)
 	for _, spec := range t.inputSpecs {
@@ -53,22 +62,25 @@ func (t *Task) GetDependencies() []string {
 	return deps
 }
 
-// GetInputParams returns input params for the calling function.
+// GetInputParams returns the input specifications and parameter types for this task.
+// Used internally during execution to resolve parameter values.
 func (t *Task) GetInputParams() (specs []InputSpec, types []reflect.Type) {
 	return t.inputSpecs, t.fnInfo.inputTypes
 }
 
-// GetFunction returns the callable function.
+// GetFunction returns the callable function for this task.
+// Used internally during task execution.
 func (t *Task) GetFunction() any {
 	return t.fn
 }
 
-// GetOutputParams returns the output type if it exists.
+// GetOutputParams returns the output type if the function returns a result.
+// Returns nil if the function only returns an error.
 func (t *Task) GetOutputParams() reflect.Type {
 	return t.fnInfo.outputType
 }
 
-// GetID returns task id.
+// GetID returns the task's unique identifier.
 func (t *Task) GetID() string {
 	return t.id
 }

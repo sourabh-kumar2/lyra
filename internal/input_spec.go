@@ -11,8 +11,11 @@ const (
 )
 
 // InputSpec specifies how to get input for a task parameter.
+// This type is used internally and created by lyra.Use() and lyra.UseRun() functions.
+//
+// Do not create InputSpec instances directly; use the provided helper functions.
 type InputSpec struct {
-	Type   inputSpecType // Type is required to distinguish between runtime params and task dependency params.
-	Source string
-	Field  []string
+	Type   inputSpecType // Type Distinguishes between runtime and task dependency inputs
+	Source string        // Source task ID or runtime key
+	Field  []string      // Field Optional nested field path
 }
