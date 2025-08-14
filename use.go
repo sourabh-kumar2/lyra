@@ -1,8 +1,6 @@
 package lyra
 
 import (
-	"strings"
-
 	"github.com/sourabh-kumar2/lyra/internal"
 )
 
@@ -14,14 +12,10 @@ import (
 //	Use("fetchUser", "ID")     -> Field "ID" from "fetchUser" result
 //	Use("fetchUser", "Address", "Street") -> Nested field "Address.Street"
 func Use(source string, fieldPath ...string) internal.InputSpec {
-	field := ""
-	if len(fieldPath) > 0 {
-		field = strings.Trim(strings.Join(fieldPath, "."), ".")
-	}
 	return internal.InputSpec{
 		Type:   internal.TaskResultInputSpec,
 		Source: source,
-		Field:  field,
+		Field:  fieldPath,
 	}
 }
 

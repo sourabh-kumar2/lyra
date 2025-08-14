@@ -205,6 +205,14 @@ func TestLyraResolveInputsNestedFieldAccessWithPointer(t *testing.T) {
 			expected: "Boston",
 		},
 		{
+			name: "address is pointer with empty path",
+			user: User{
+				Address: &Address{City: "Boston"},
+			},
+			path:     []string{"", "Address", "", "City", ""},
+			expected: "Boston",
+		},
+		{
 			name: "user is pointer",
 			user: &User{
 				Address: &Address{City: "Boston"},

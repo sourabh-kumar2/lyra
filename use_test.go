@@ -23,7 +23,6 @@ func TestUse(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
-				Field:  "",
 			},
 		},
 		{
@@ -33,7 +32,7 @@ func TestUse(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
-				Field:  "ID",
+				Field:  []string{"ID"},
 			},
 		},
 		{
@@ -43,7 +42,7 @@ func TestUse(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
-				Field:  "Address.Street",
+				Field:  []string{"Address", "Street"},
 			},
 		},
 		{
@@ -53,7 +52,7 @@ func TestUse(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
-				Field:  "Profile.Settings.Theme.Color",
+				Field:  []string{"Profile", "Settings", "Theme", "Color"},
 			},
 		},
 		{
@@ -62,7 +61,6 @@ func TestUse(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.TaskResultInputSpec,
 				Source: "",
-				Field:  "",
 			},
 		},
 		{
@@ -72,7 +70,7 @@ func TestUse(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.TaskResultInputSpec,
 				Source: "fetchUser",
-				Field:  "ID",
+				Field:  []string{"", "ID", ""},
 			},
 		},
 	}
@@ -99,7 +97,6 @@ func TestUseRun(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.RuntimeInputSpec,
 				Source: "user_id",
-				Field:  "",
 			},
 		},
 		{
@@ -109,7 +106,7 @@ func TestUseRun(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.RuntimeInputSpec,
 				Source: "user",
-				Field:  "ID",
+				Field:  []string{"ID"},
 			},
 		},
 		{
@@ -119,7 +116,7 @@ func TestUseRun(t *testing.T) {
 			expected: internal.InputSpec{
 				Type:   internal.RuntimeInputSpec,
 				Source: "user",
-				Field:  "Address.Street",
+				Field:  []string{"Address", "Street"},
 			},
 		},
 	}

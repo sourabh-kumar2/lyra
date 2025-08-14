@@ -5,7 +5,6 @@ import (
 	stderr "errors"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/sourabh-kumar2/lyra/errors"
 	"github.com/sourabh-kumar2/lyra/internal"
@@ -30,7 +29,7 @@ func resolveInputs(
 				task.GetID(),
 			)
 		}
-		if spec.Field != "" {
+		if len(spec.Field) > 0 {
 			value, err = extractNestedField(value, spec.Field)
 			if err != nil {
 				return nil, errors.Wrapf(err, "parameter %d", i+2)
@@ -56,15 +55,17 @@ func resolveInputs(
 
 //nolint:err113 // static error because its too specific
 //revive:disable-next-line:cognitive-complexity // struct walking algo is complex.
-func extractNestedField(value any, path string) (any, error) {
+func extractNestedField(value any, fields []string) (any, error) {
 	if value == nil {
 		return nil, stderr.New("value is nil")
 	}
 
 	current := reflect.ValueOf(value)
-	fields := strings.Split(path, ".")
 
 	for _, fieldName := range fields {
+		if fieldName == "" { // Skipping empty path fields
+			continue
+		}
 		if current.Kind() == reflect.Ptr && current.IsNil() {
 			return nil, fmt.Errorf("nil pointer encountered while accessing field %q", fieldName)
 		}

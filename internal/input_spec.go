@@ -14,5 +14,5 @@ const (
 type InputSpec struct {
 	Type   inputSpecType // Type is required to distinguish between runtime params and task dependency params.
 	Source string
-	Field  string
+	Field  []string
 }
